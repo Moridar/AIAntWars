@@ -203,12 +203,15 @@ public class BobbieAI implements IAntAI {
             action = EAction.PickUpFood;
         } else if (thisAnt.getFoodLoad() < 2) {
             action = aStarRoute.suggestEAction(thisLocation, getNearestFoodLocation(thisLocation), thisAnt, possibleActions);
+             if (action == EAction.Attack) {
+                action = EAction.Pass;
+            }
         } else if (possibleActions.contains(EAction.DigOut) && rnd.nextBoolean()) {
             action = EAction.DigOut;
-        } else if (possibleActions.contains(EAction.DropSoil) && visibleLocations.get(0).getFoodCount() == 0 && rnd.nextBoolean()) {
+        } else if (possibleActions.contains(EAction.DropSoil) && visibleLocations.get(0).getFoodCount() < 2 && rnd.nextBoolean()) {
             action = EAction.DropSoil;
         } else {
-            action = aStarRoute.suggestEAction(thisLocation, getRandomLocNearBase(10), thisAnt, possibleActions);
+            action = aStarRoute.suggestEAction(thisLocation, getRandomLocNearBase(7), thisAnt, possibleActions);
             if (action == EAction.Attack) {
                 action = EAction.Pass;
             }
