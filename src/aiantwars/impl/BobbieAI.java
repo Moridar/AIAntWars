@@ -11,10 +11,12 @@ import aiantwars.IAntAI;
 import aiantwars.IAntInfo;
 import aiantwars.IEgg;
 import aiantwars.ILocationInfo;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import jdk.nashorn.internal.runtime.arrays.ArrayLikeIterator;
 
 /**
  *
@@ -29,6 +31,7 @@ public class BobbieAI implements IAntAI {
     private final Random rnd = new Random();
     private ILocationInfo worldMap[][];
     private ArrayList<IAntInfo> aliveAnts = new ArrayList<>();
+    private ArrayList<IAntInfo> enemyAnts = new ArrayList<>();
     private boolean needCarrier = true;
     private boolean needScout = true;
     private boolean needWarrior = false;
@@ -47,20 +50,20 @@ public class BobbieAI implements IAntAI {
     }
 
     private ILocationInfo getRandomLocNearBase(int range) {
-        int x = rnd.nextInt(range) - range / 2 + getBaseLoc().getX();
-        int y = rnd.nextInt(range) - range / 2 + getBaseLoc().getY();
+        int x = rnd.nextInt(range*2+1) - range + getBaseLoc().getX();
+        int y = rnd.nextInt(range*2+1) - range + getBaseLoc().getY();
         if (x >= 0 && x < worldSizeX && y >= 0 && y < worldSizeY) {
             return worldMap[x][y];
         }
-        if (range > 0) {
-            range--;
-        }
+        if(range>3) return getRandomLocNearBase(range-1);
         return getRandomLocNearBase(range);
     }
 
     private ILocationInfo getBaseLoc() {
-        if (aliveAnts.get(0).getAntType() == EAntType.QUEEN) {
-            return aliveAnts.get(0).getLocation();
+        for (IAntInfo ant : aliveAnts) {
+            if (ant.getAntType() == EAntType.QUEEN) {
+                return ant.getLocation();
+            }
         }
         return worldMap[worldSizeX / 2][worldSizeY / 2];
     }
@@ -122,7 +125,9 @@ public class BobbieAI implements IAntAI {
         }
 
         for (ILocationInfo locInfo : list) {
-            list.addAll(getAdjacentLocations(locInfo, repeat - 1));
+            for(ILocationInfo newLoc : getAdjacentLocations(locInfo, repeat - 1)){
+                if(!list.contains(newLoc)) list.add(newLoc);
+            }
         }
         return list;
     }
@@ -191,7 +196,10 @@ public class BobbieAI implements IAntAI {
         }
 
         EAction action = null;
-        if (possibleActions.contains(EAction.EatFood) && (thisAnt.getHitPoints() < 10 || thisAnt.getHitPoints() < enemyMaxDamage(thisLocation))) {
+        if (possibleActions.contains(EAction.Attack) && visibleLocations.get(0).getAnt().getTeamInfo().getTeamID() != thisAnt.getTeamInfo().getTeamID() && visibleLocations.get(0).getAnt().getHitPoints() < thisAnt.getAntType().getMaxAttack() - (thisAnt.getAntType().getMaxAttack() - thisAnt.getAntType().getMinAttack()) / 2
+                && enemyMaxDamage(thisAnt.getLocation()) - visibleLocations.get(0).getAnt().getAntType().getMaxAttack() < thisAnt.getHitPoints()) {
+            action = EAction.Attack;
+        } else if (possibleActions.contains(EAction.EatFood) && (thisAnt.getHitPoints() < 10 || thisAnt.getHitPoints() < enemyMaxDamage(thisLocation))) {
             action = EAction.EatFood;
         } else if (possibleActions.contains(EAction.LayEgg) && (aliveAnts.size() < 5 || thisAnt.getFoodLoad() > 9)) {
             action = EAction.LayEgg;
@@ -203,15 +211,19 @@ public class BobbieAI implements IAntAI {
             action = EAction.PickUpFood;
         } else if (thisAnt.getFoodLoad() < 2) {
             action = aStarRoute.suggestEAction(thisLocation, getNearestFoodLocation(thisLocation), thisAnt, possibleActions);
-             if (action == EAction.Attack) {
+            if (action == EAction.Attack) {
                 action = EAction.Pass;
             }
-        } else if (possibleActions.contains(EAction.DigOut) && rnd.nextBoolean()) {
+        } else if (possibleActions.contains(EAction.DigOut)) {
             action = EAction.DigOut;
         } else if (possibleActions.contains(EAction.DropSoil) && visibleLocations.get(0).getFoodCount() < 2 && rnd.nextBoolean()) {
             action = EAction.DropSoil;
         } else {
-            action = aStarRoute.suggestEAction(thisLocation, getRandomLocNearBase(7), thisAnt, possibleActions);
+            if (thisAnt.getAntType() == EAntType.QUEEN) {
+                action = aStarRoute.suggestEAction(thisLocation, getRandomLocNearBase(10), thisAnt, possibleActions);
+            } else {
+                action = aStarRoute.suggestEAction(thisLocation, getRandomLocNearBase(7), thisAnt, possibleActions);
+            }
             if (action == EAction.Attack) {
                 action = EAction.Pass;
             }
@@ -357,6 +369,7 @@ public class BobbieAI implements IAntAI {
                             break;
                         case 3:
                             return EAction.TurnLeft;
+                            
                     }
 
                     return possibleActions.get(rnd.nextInt(possibleActions.size()));
