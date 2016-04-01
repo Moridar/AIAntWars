@@ -37,25 +37,37 @@ public class BobbieAI implements IAntAI {
     private boolean needWarrior = false;
     private aStarRoute aStarRoute = new aStarRoute();
 
+    private double calcDistance(ILocationInfo a, ILocationInfo b) {
+        int x = Math.abs(a.getX() - b.getX());
+        int y = Math.abs(a.getY() - b.getY());
+        return Math.sqrt(x * x + y * y);
+    }
+
     private ILocationInfo getNearestFoodLocation(ILocationInfo thisLocation) {
         if (thisLocation.getFoodCount() > 0) {
             return thisLocation;
         }
-        for (ILocationInfo loc : getAdjacentLocations(thisLocation)) {
-            if (loc.getFoodCount() > 0) {
-                return loc;
+        ILocationInfo nearest = thisLocation;
+        double nearestDistance = 5000.0;
+        for (int x = 0; x < worldMap.length; x++) {
+            for (int y = 0; y < worldMap[x].length; y++) {
+                if (worldMap[x][y].getFoodCount() != 0 && calcDistance(worldMap[x][y], thisLocation) < nearestDistance) {
+                    nearest = worldMap[x][y];
+                    nearestDistance = calcDistance(thisLocation, nearest);
+                }
             }
         }
-        return getNearestFoodLocation(getAdjacentLocations(thisLocation).get(rnd.nextInt(getAdjacentLocations(thisLocation).size())));
+        return nearest;
     }
-
     private ILocationInfo getRandomLocNearBase(int range) {
-        int x = rnd.nextInt(range*2+1) - range + getBaseLoc().getX();
-        int y = rnd.nextInt(range*2+1) - range + getBaseLoc().getY();
+        int x = rnd.nextInt(range * 2 + 1) - range + getBaseLoc().getX();
+        int y = rnd.nextInt(range * 2 + 1) - range + getBaseLoc().getY();
         if (x >= 0 && x < worldSizeX && y >= 0 && y < worldSizeY) {
             return worldMap[x][y];
         }
-        if(range>3) return getRandomLocNearBase(range-1);
+        if (range > 3) {
+            return getRandomLocNearBase(range - 1);
+        }
         return getRandomLocNearBase(range);
     }
 
@@ -124,17 +136,15 @@ public class BobbieAI implements IAntAI {
             return list;
         }
 
-        for (ILocationInfo locInfo : list) {
-            for(ILocationInfo newLoc : getAdjacentLocations(locInfo, repeat - 1)){
-                if(!list.contains(newLoc)) list.add(newLoc);
+        for (ILocationInfo adjacentLoc : list) {
+            for (ILocationInfo newLoc : getAdjacentLocations(adjacentLoc, repeat - 1)) {
+                if (!list.contains(newLoc)) {
+                    list.add(newLoc);
+                }
             }
+
         }
         return list;
-    }
-
-    private boolean isLocationAccessible(int x, int y, ILocationInfo yourLocation) {
-
-        return false;
     }
 
     private List<ILocationInfo> getAdjacentLocations(ILocationInfo yourLocation) {
@@ -369,9 +379,9 @@ public class BobbieAI implements IAntAI {
                             break;
                         case 3:
                             return EAction.TurnLeft;
-                            
-                    }
 
+                    }
+                    System.out.println("WARNING! Random turning!");
                     return possibleActions.get(rnd.nextInt(possibleActions.size()));
                 } else {
                     ILocationInfo tmp = currILoc;
